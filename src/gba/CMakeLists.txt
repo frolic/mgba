@@ -27,6 +27,7 @@ set(SOURCE_FILES
 	renderers/software-mode0.c
 	renderers/software-obj.c
 	renderers/video-software.c
+	renderers/virtual-sprites.c
 	savedata.c
 	serialize.c
 	sharkport.c

@@ -9,6 +9,7 @@
 #include <mgba/internal/arm/macros.h>
 #include <mgba/internal/gba/io.h>
 #include <mgba/internal/gba/renderers/cache-set.h>
+#include <mgba/internal/gba/renderers/virtual-sprites.h>
 
 #include <mgba-util/memory.h>
 
@@ -567,6 +568,9 @@ static void GBAVideoSoftwareRendererDrawScanline(struct GBAVideoRenderer* render
 		softwareRenderer->nextY = y + 1;
 	}
 
+	if (y == 0 && GBAVirtualSpritesTakeChanged()) {
+		memset(softwareRenderer->scanlineDirty, 0xFFFFFFFF, sizeof(softwareRenderer->scanlineDirty));
+	}
 	bool dirty = softwareRenderer->scanlineDirty[y >> 5] & (1U << (y & 0x1F));
 	if (memcmp(softwareRenderer->nextIo, softwareRenderer->cache[y].io, sizeof(softwareRenderer->nextIo))) {
 		memcpy(softwareRenderer->cache[y].io, softwareRenderer->nextIo, sizeof(softwareRenderer->nextIo));
@@ -1063,6 +1067,7 @@ int GBAVideoSoftwareRendererPreprocessSpriteLayer(struct GBAVideoSoftwareRendere
 			}
 			renderer->spriteCyclesRemaining -= sprite->cycles;
 		}
+		spriteLayers |= GBAVirtualSpritesDrawScanline(renderer, y);
 	}
 	return spriteLayers;
 }

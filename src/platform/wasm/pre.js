@@ -740,3 +740,33 @@ Module.writeMemory = (address, bytes) => {
   HEAPU8.set(bytes, pointer);
   return Boolean(writeMemory(address >>> 0, bytes.length));
 };
+
+// Loads the frames virtual sprites draw: 512 palette indices per 16x32
+// frame in `pixels`, and 16 BGR555 colors per frame in `palettes`.
+Module.setVirtualFrames = (pixels, palettes) => {
+  const memoryTransferBuffer = cwrap("memoryTransferBuffer", "number", ["number"]);
+  const setVirtualFrames = cwrap("setVirtualFrames", "boolean", ["number"]);
+  const count = palettes.length / 16;
+  const pointer = memoryTransferBuffer(pixels.length + palettes.byteLength);
+  if (!pointer) {
+    return false;
+  }
+  HEAPU8.set(pixels, pointer);
+  HEAPU8.set(new Uint8Array(palettes.buffer, palettes.byteOffset, palettes.byteLength), pointer + pixels.length);
+  return Boolean(setVirtualFrames(count));
+};
+
+// Sets the virtual sprites for the next frame: x, y, frame, and priority
+// per sprite in `entries`.
+Module.setVirtualSprites = (entries) => {
+  const memoryTransferBuffer = cwrap("memoryTransferBuffer", "number", ["number"]);
+  const setVirtualSprites = cwrap("setVirtualSprites", "boolean", ["number"]);
+  const pointer = memoryTransferBuffer(entries.byteLength);
+  if (!pointer) {
+    return false;
+  }
+  HEAPU8.set(new Uint8Array(entries.buffer, entries.byteOffset, entries.byteLength), pointer);
+  return Boolean(setVirtualSprites(entries.length / 4));
+};
+
+Module.virtualSpritesFrameMs = () => cwrap("virtualSpritesFrameMs", "number", [])();

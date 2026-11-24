@@ -394,6 +394,32 @@ declare namespace mGBA {
     writeMemory(address: number, bytes: Uint8Array): boolean;
 
     /**
+     * Loads the frames that virtual sprites draw. Virtual sprites are drawn
+     * by the renderer after the game's own sprites, outside OAM and VRAM, so
+     * the GBA's sprite limits don't apply and game memory is untouched.
+     *
+     * @param pixels - 512 palette indices per 16x32 frame, row by row, 0 transparent.
+     * @param palettes - 16 BGR555 colors per frame.
+     * @returns True if the frames were loaded.
+     */
+    setVirtualFrames(pixels: Uint8Array, palettes: Uint16Array): boolean;
+
+    /**
+     * Sets the virtual sprites for the next frame. Call it from
+     * `videoFrameEndedCallback`, while the core thread waits.
+     *
+     * @param entries - Screen x, screen y, frame, and background priority per sprite.
+     * @returns True if the sprites were set.
+     */
+    setVirtualSprites(entries: Int16Array): boolean;
+
+    /**
+     * Milliseconds the renderer spent drawing virtual sprites in the last
+     * complete frame.
+     */
+    virtualSpritesFrameMs(): number;
+
+    /**
      * Gets the current audio volume multiplier.
      *
      * - `1.0` = 100%

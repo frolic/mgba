@@ -13,6 +13,7 @@
 #include <mgba/core/version.h>
 #include <mgba/gba/interface.h>
 #include <mgba/internal/gba/input.h>
+#include <mgba/internal/gba/renderers/virtual-sprites.h>
 #include <mgba/internal/gba/sio.h>
 #include <mgba/internal/gba/sio/lockstep.h>
 
@@ -1366,6 +1367,42 @@ EMSCRIPTEN_KEEPALIVE bool readMemory(uint32_t address, uint32_t length) {
 
 EMSCRIPTEN_KEEPALIVE bool writeMemory(uint32_t address, uint32_t length) {
 	return accessMemory(address, length, true);
+}
+
+// Virtual sprites for embedders, passed through the memory transfer buffer.
+// See virtual-sprites.h. Call these while the core thread waits, such as in
+// videoFrameEndedCallback.
+EMSCRIPTEN_KEEPALIVE bool setVirtualFrames(uint32_t count) {
+	size_t pixelBytes = (size_t) count * GBA_VIRTUAL_SPRITE_PIXELS;
+	if (pixelBytes + count * 32 > memoryTransferSize) {
+		return false;
+	}
+	uint16_t* palettes = malloc(count * 32);
+	if (count && !palettes) {
+		return false;
+	}
+	memcpy(palettes, memoryTransfer + pixelBytes, count * 32);
+	bool isSet = GBAVirtualSpritesSetFrames(memoryTransfer, palettes, count);
+	free(palettes);
+	return isSet;
+}
+
+EMSCRIPTEN_KEEPALIVE bool setVirtualSprites(uint32_t count) {
+	if ((size_t) count * 8 > memoryTransferSize) {
+		return false;
+	}
+	int16_t* entries = malloc(count * 8);
+	if (count && !entries) {
+		return false;
+	}
+	memcpy(entries, memoryTransfer, count * 8);
+	bool isSet = GBAVirtualSpritesSet(entries, count);
+	free(entries);
+	return isSet;
+}
+
+EMSCRIPTEN_KEEPALIVE double virtualSpritesFrameMs(void) {
+	return GBAVirtualSpritesLastFrameMs();
 }
 
 int main() {
