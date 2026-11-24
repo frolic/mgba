@@ -716,6 +716,13 @@ Module.unloadShader = () => {
   unloadShader();
 };
 
+// Sets the canvas's backing store size in device pixels and stretches the
+// image to fill it, now and for games loaded later.
+Module.resizeCanvas = (width, height) => {
+  const resizeCanvas = cwrap("resizeCanvas", null, ["number", "number"]);
+  resizeCanvas(width, height);
+};
+
 // Reads `length` bytes of the guest bus starting at `address`, without side
 // effects on I/O registers. Returns null when no game is loaded.
 Module.readMemory = (address, length) => {

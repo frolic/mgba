@@ -371,6 +371,16 @@ declare namespace mGBA {
     getSave(): Uint8Array | null;
 
     /**
+     * Sets the size of the canvas's backing store and stretches the image to
+     * fill it, now and for games loaded later. Keep the canvas at the game's
+     * 3:2 aspect ratio; a multiple of 240 by 160 scales by whole pixels.
+     *
+     * @param width - Width in device pixels.
+     * @param height - Height in device pixels.
+     */
+    resizeCanvas(width: number, height: number): void;
+
+    /**
      * Reads bytes from the guest bus of the running game, without side
      * effects on I/O registers. The core keeps running during the read, so
      * it never blocks the page. Read from `videoFrameEndedCallback`, where

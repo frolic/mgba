@@ -44,6 +44,9 @@ struct mEmscriptenRenderer {
 	int rewindBufferCapacity;
 	int rewindBufferInterval;
 	int highResolutionScale;
+	// canvas backing store size set by resizeCanvas, or 0 to follow highResolutionScale
+	unsigned canvasWidth;
+	unsigned canvasHeight;
 	bool videoSync;
 	bool audioSync;
 	bool timestepSync;

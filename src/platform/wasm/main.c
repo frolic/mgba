@@ -535,6 +535,31 @@ void mGLCommonSwap(struct VideoBackend* context) {
 	SDL_GL_SwapWindow(renderer->window);
 }
 
+// Sizes the canvas's backing store and the GL viewport, in device pixels.
+static void resizeContext(unsigned width, unsigned height) {
+	SDL_SetWindowSize(renderer->window, width, height);
+	renderer->gl2.d.contextResized(&renderer->gl2.d, width, height, 0, 0);
+	EM_ASM(
+	    {
+		    Module.canvas.width = $0;
+		    Module.canvas.height = $1;
+	    },
+	    width, height);
+}
+
+// Sets the canvas's backing store size in device pixels, now and for games
+// loaded later, so the embedder can follow the canvas's CSS size.
+EMSCRIPTEN_KEEPALIVE void resizeCanvas(unsigned width, unsigned height) {
+	if (!width || !height) {
+		return;
+	}
+	renderer->canvasWidth = width;
+	renderer->canvasHeight = height;
+	if (renderer->glCtx && renderer->window) {
+		resizeContext(width, height);
+	}
+}
+
 bool mGLES2Init(struct mEmscriptenRenderer* renderer, int width, int height) {
 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -572,8 +597,11 @@ bool mGLES2Init(struct mEmscriptenRenderer* renderer, int width, int height) {
 	mGLES2ContextCreate(&renderer->gl2);
 
 	renderer->gl2.d.user = renderer;
-	renderer->gl2.d.lockAspectRatio = true;
-	renderer->gl2.d.lockIntegerScaling = true;
+	// The image fills the canvas. The embedder keeps the canvas at the game's
+	// aspect ratio, and a canvas a multiple of the game's size scales by whole
+	// pixels.
+	renderer->gl2.d.lockAspectRatio = false;
+	renderer->gl2.d.lockIntegerScaling = false;
 	renderer->gl2.d.filter = false;
 	renderer->gl2.d.swap = mGLCommonSwap;
 	renderer->gl2.d.init(&renderer->gl2.d, 0);
@@ -693,17 +721,12 @@ EMSCRIPTEN_KEEPALIVE bool loadGame(const char* name, const char* savePathOverrid
 	mGLES2Init(renderer, w, h);
 	renderer->core->setVideoBuffer(renderer->core, renderer->outputBuffer, w);
 
-	double dpr = emscripten_get_device_pixel_ratio();
-	unsigned displayW = w * renderer->highResolutionScale * dpr;
-	unsigned displayH = h * renderer->highResolutionScale * dpr;
-	SDL_SetWindowSize(renderer->window, displayW, displayH);
-	renderer->gl2.d.contextResized(&renderer->gl2.d, displayW, displayH, 0, 0);
-	EM_ASM(
-	    {
-		    Module.canvas.width = $0;
-		    Module.canvas.height = $1;
-	    },
-	    displayW, displayH);
+	if (renderer->canvasWidth && renderer->canvasHeight) {
+		resizeContext(renderer->canvasWidth, renderer->canvasHeight);
+	} else {
+		double dpr = emscripten_get_device_pixel_ratio();
+		resizeContext(w * renderer->highResolutionScale * dpr, h * renderer->highResolutionScale * dpr);
+	}
 
 	emscripten_resume_main_loop();
 	return true;
