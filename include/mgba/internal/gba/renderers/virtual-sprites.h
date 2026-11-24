@@ -8,11 +8,11 @@
 
 CXX_GUARD_START
 
-// Sprites an embedder draws on top of the game's own, outside OAM and VRAM,
-// so the GBA's 128-sprite and per-scanline limits don't apply and nothing
+// Sprites an embedder draws among the game's own, outside OAM and VRAM, so
+// the GBA's 128-sprite and per-scanline limits don't apply and nothing
 // reaches game memory or save states. The software renderer draws them in
-// its sprite pass after the real sprites, with the same background priority
-// bits, so a real sprite always covers a virtual one of equal priority.
+// its sprite pass with the same background priority bits, ordered among the
+// real sprites by how low on screen their feet are.
 //
 // Every frame is 16x32 pixels, as overworld characters are. Change the
 // sprites only while the core thread waits, such as in a frame callback.
@@ -33,10 +33,17 @@ bool GBAVirtualSpritesSetFrames(const uint8_t* pixels, const uint16_t* palettes,
 // ones on the same row, and sprites lower on screen in front of higher ones.
 bool GBAVirtualSpritesSet(const int16_t* entries, size_t count);
 
-// Draws the sprites that cross scanline `y` into the renderer's sprite
-// layer. Returns a bit per background priority that got pixels, as
+// Drawing one scanline: begin it, then before each real sprite that
+// crosses it, call GBAVirtualSpritesDrawUntil with that sprite's bottom row
+// (exclusive) to draw the virtual sprites whose feet are lower on screen,
+// which belong in front of it. Call it again with INT_MIN after the last
+// real sprite, then end the scanline. Real sprites are drawn front to back,
+// so a virtual sprite on the same row as a real one goes behind it. Each
+// call returns a bit per background priority that got pixels, as
 // GBAVideoSoftwareRendererPreprocessSpriteLayer does.
-int GBAVirtualSpritesDrawScanline(struct GBAVideoSoftwareRenderer* renderer, int y);
+void GBAVirtualSpritesBeginScanline(int y);
+int GBAVirtualSpritesDrawUntil(struct GBAVideoSoftwareRenderer* renderer, int bottom);
+void GBAVirtualSpritesEndScanline(void);
 
 // Whether the sprites changed since the last call, so every scanline has to
 // be drawn again.

@@ -141,57 +141,82 @@ double GBAVirtualSpritesLastFrameMs(void) {
 	return state.lastFrameMs;
 }
 
-int GBAVirtualSpritesDrawScanline(struct GBAVideoSoftwareRenderer* renderer, int y) {
-	if (!state.spriteCount) {
-		if (y == GBA_VIDEO_VERTICAL_PIXELS - 1) {
-			state.lastFrameMs = state.frameMs;
-			state.frameMs = 0;
+// The scanline being drawn, and the next bucket and sprite to draw on it.
+// Buckets go from the bottom of the screen up, so sprites come front to
+// back, the order real sprites are drawn in.
+static struct {
+	int y;
+	int bucket;
+	int firstBucket;
+	uint32_t index;
+	double startMs;
+} cursor;
+
+void GBAVirtualSpritesBeginScanline(int y) {
+	cursor.y = y;
+	cursor.bucket = y + BUCKET_OFFSET;
+	cursor.firstBucket = cursor.bucket - GBA_VIRTUAL_SPRITE_HEIGHT + 1;
+	if (cursor.firstBucket < 0) {
+		cursor.firstBucket = 0;
+	}
+	cursor.index = state.spriteCount ? state.bucketStart[cursor.bucket] : 0;
+}
+
+static void _drawRow(struct GBAVideoSoftwareRenderer* renderer, const struct VirtualSprite* sprite, int y) {
+	int row = y - sprite->y;
+	size_t frameRow = (size_t) sprite->frame * GBA_VIRTUAL_SPRITE_HEIGHT + row;
+	uint16_t mask = state.rowMasks[frameRow];
+	if (!mask) {
+		return;
+	}
+	const uint8_t* pixels = &state.pixels[frameRow * GBA_VIRTUAL_SPRITE_WIDTH];
+	const mColor* palette = &state.palettes[sprite->frame * 16];
+	uint32_t flags = (uint32_t) sprite->priority << OFFSET_PRIORITY;
+	int x;
+	for (x = 0; x < GBA_VIRTUAL_SPRITE_WIDTH; ++x) {
+		int sourceX = sprite->hFlip ? GBA_VIRTUAL_SPRITE_WIDTH - 1 - x : x;
+		if (!(mask & (1 << sourceX))) {
+			continue;
 		}
+		int outX = sprite->x + x;
+		if (outX < 0 || outX >= GBA_VIDEO_HORIZONTAL_PIXELS) {
+			continue;
+		}
+		uint32_t current = renderer->spriteLayer[outX];
+		if ((current & FLAG_ORDER_MASK) > flags) {
+			renderer->spriteLayer[outX] = palette[pixels[sourceX] & 0xF] | flags;
+		}
+	}
+}
+
+int GBAVirtualSpritesDrawUntil(struct GBAVideoSoftwareRenderer* renderer, int bottom) {
+	if (!state.spriteCount) {
 		return 0;
 	}
 	double start = NOW_MS();
 	int layers = 0;
-	// Sprites lower on screen are drawn first, so they cover the ones above.
-	int bucket = y + BUCKET_OFFSET;
-	int firstBucket = bucket - GBA_VIRTUAL_SPRITE_HEIGHT + 1;
-	if (firstBucket < 0) {
-		firstBucket = 0;
-	}
-	for (; bucket >= firstBucket; --bucket) {
-		uint32_t i;
-		for (i = state.bucketStart[bucket]; i < state.bucketStart[bucket + 1]; ++i) {
-			const struct VirtualSprite* sprite = &state.sprites[state.order[i]];
-			int row = y - sprite->y;
-			size_t frameRow = (size_t) sprite->frame * GBA_VIRTUAL_SPRITE_HEIGHT + row;
-			uint16_t mask = state.rowMasks[frameRow];
-			if (!mask) {
-				continue;
-			}
-			const uint8_t* pixels = &state.pixels[frameRow * GBA_VIRTUAL_SPRITE_WIDTH];
-			const mColor* palette = &state.palettes[sprite->frame * 16];
-			uint32_t flags = (uint32_t) sprite->priority << OFFSET_PRIORITY;
-			int x;
-			for (x = 0; x < GBA_VIRTUAL_SPRITE_WIDTH; ++x) {
-				int sourceX = sprite->hFlip ? GBA_VIRTUAL_SPRITE_WIDTH - 1 - x : x;
-				if (!(mask & (1 << sourceX))) {
-					continue;
-				}
-				int outX = sprite->x + x;
-				if (outX < 0 || outX >= GBA_VIDEO_HORIZONTAL_PIXELS) {
-					continue;
-				}
-				uint32_t current = renderer->spriteLayer[outX];
-				if ((current & FLAG_ORDER_MASK) > flags) {
-					renderer->spriteLayer[outX] = palette[pixels[sourceX] & 0xF] | flags;
-				}
-			}
+	for (; cursor.bucket >= cursor.firstBucket; --cursor.bucket) {
+		int spriteBottom = cursor.bucket - BUCKET_OFFSET + GBA_VIRTUAL_SPRITE_HEIGHT;
+		if (spriteBottom <= bottom) {
+			break;
+		}
+		uint32_t end = state.bucketStart[cursor.bucket + 1];
+		for (; cursor.index < end; ++cursor.index) {
+			const struct VirtualSprite* sprite = &state.sprites[state.order[cursor.index]];
+			_drawRow(renderer, sprite, cursor.y);
 			layers |= 1 << sprite->priority;
+		}
+		if (cursor.bucket > cursor.firstBucket) {
+			cursor.index = state.bucketStart[cursor.bucket - 1];
 		}
 	}
 	state.frameMs += NOW_MS() - start;
-	if (y == GBA_VIDEO_VERTICAL_PIXELS - 1) {
+	return layers;
+}
+
+void GBAVirtualSpritesEndScanline(void) {
+	if (cursor.y == GBA_VIDEO_VERTICAL_PIXELS - 1) {
 		state.lastFrameMs = state.frameMs;
 		state.frameMs = 0;
 	}
-	return layers;
 }

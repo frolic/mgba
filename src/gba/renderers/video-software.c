@@ -1032,6 +1032,7 @@ int GBAVideoSoftwareRendererPreprocessSpriteLayer(struct GBAVideoSoftwareRendere
 		int mosaicY = y - (y % mosaicV);
 		int lastIndex = 0;
 		int i;
+		GBAVirtualSpritesBeginScanline(y);
 		for (i = 0; i < renderer->oamMax; ++i) {
 			struct GBAVideoRendererSprite* sprite = &renderer->sprites[i];
 			int localY = y;
@@ -1044,6 +1045,7 @@ int GBAVideoSoftwareRendererPreprocessSpriteLayer(struct GBAVideoSoftwareRendere
 			if (y < sprite->y || y >= sprite->endY) {
 				continue;
 			}
+			spriteLayers |= GBAVirtualSpritesDrawUntil(renderer, sprite->endY);
 			if (GBAObjAttributesAIsMosaic(sprite->obj.a) && mosaicV > 1) {
 				localY = mosaicY;
 				if (localY < sprite->y && sprite->y < GBA_VIDEO_VERTICAL_PIXELS) {
@@ -1067,7 +1069,8 @@ int GBAVideoSoftwareRendererPreprocessSpriteLayer(struct GBAVideoSoftwareRendere
 			}
 			renderer->spriteCyclesRemaining -= sprite->cycles;
 		}
-		spriteLayers |= GBAVirtualSpritesDrawScanline(renderer, y);
+		spriteLayers |= GBAVirtualSpritesDrawUntil(renderer, INT_MIN);
+		GBAVirtualSpritesEndScanline();
 	}
 	return spriteLayers;
 }
