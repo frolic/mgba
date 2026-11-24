@@ -372,8 +372,8 @@ declare namespace mGBA {
 
     /**
      * Reads bytes from the guest bus of the running game, without side
-     * effects on I/O registers. The core thread pauses for the read, so the
-     * bytes come from one frame.
+     * effects on I/O registers. The core keeps running during the read, so
+     * it never blocks the page, and bytes may span two frames.
      *
      * @param address - Guest address, ex. `0x02000000` for EWRAM.
      * @param length - Number of bytes to read.
