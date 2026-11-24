@@ -1324,11 +1324,12 @@ int excludeKeys(void* userdata, SDL_Event* event) {
 
 // Memory access for embedders. JS gets a transfer buffer in the wasm heap,
 // then reads or writes the guest bus through it. The raw accessors have no
-// side effects on I/O registers. Writes pause the core thread so the game
-// never sees half of one. Reads don't: pausing blocks the browser's main
-// thread until the core reaches a safe point, about 4 ms, which starves
-// audio. An unpaused read can mix two frames, which callers polling state
-// once a frame tolerate.
+// side effects on I/O registers. Neither reads nor writes pause the core
+// thread: pausing blocks the browser's main thread until the core reaches a
+// safe point, about 4 ms, which starves audio, and it deadlocks when called
+// from a core callback, where the core thread already waits for the main
+// thread. Call them from videoFrameEndedCallback to see and change one whole
+// frame; elsewhere an access can mix two frames.
 static uint8_t* memoryTransfer = NULL;
 static uint32_t memoryTransferSize = 0;
 
@@ -1349,19 +1350,12 @@ static bool accessMemory(uint32_t address, uint32_t length, bool write) {
 	if (!core || length > memoryTransferSize) {
 		return false;
 	}
-	struct mCoreThread* thread = write ? renderer->thread : NULL;
-	if (thread) {
-		mCoreThreadInterrupt(thread);
-	}
 	for (uint32_t i = 0; i < length; ++i) {
 		if (write) {
 			core->rawWrite8(core, address + i, -1, memoryTransfer[i]);
 		} else {
 			memoryTransfer[i] = core->rawRead8(core, address + i, -1);
 		}
-	}
-	if (thread) {
-		mCoreThreadContinue(thread);
 	}
 	return true;
 }

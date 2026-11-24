@@ -373,7 +373,8 @@ declare namespace mGBA {
     /**
      * Reads bytes from the guest bus of the running game, without side
      * effects on I/O registers. The core keeps running during the read, so
-     * it never blocks the page, and bytes may span two frames.
+     * it never blocks the page. Read from `videoFrameEndedCallback`, where
+     * the core thread waits, to get bytes from one frame.
      *
      * @param address - Guest address, ex. `0x02000000` for EWRAM.
      * @param length - Number of bytes to read.
@@ -382,8 +383,9 @@ declare namespace mGBA {
     readMemory(address: number, length: number): Uint8Array | null;
 
     /**
-     * Writes bytes to the guest bus of the running game. The core thread
-     * pauses for the write.
+     * Writes bytes to the guest bus of the running game. The core keeps
+     * running, so write from `videoFrameEndedCallback`, where the core thread
+     * waits, if the game must see all the bytes at once.
      *
      * @param address - Guest address, ex. `0x02000000` for EWRAM.
      * @param bytes - Bytes to write, starting at `address`.
