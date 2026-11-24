@@ -408,7 +408,9 @@ declare namespace mGBA {
      * Sets the virtual sprites for the next frame. Call it from
      * `videoFrameEndedCallback`, while the core thread waits.
      *
-     * @param entries - Screen x, screen y, frame, and background priority per sprite.
+     * @param entries - Screen x, screen y, frame, and flags per sprite. The
+     *   flags are the background priority (0 to 3) in bits 0 and 1, and a
+     *   horizontal flip in bit 2.
      * @returns True if the sprites were set.
      */
     setVirtualSprites(entries: Int16Array): boolean;

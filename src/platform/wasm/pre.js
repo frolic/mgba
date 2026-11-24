@@ -756,8 +756,8 @@ Module.setVirtualFrames = (pixels, palettes) => {
   return Boolean(setVirtualFrames(count));
 };
 
-// Sets the virtual sprites for the next frame: x, y, frame, and priority
-// per sprite in `entries`.
+// Sets the virtual sprites for the next frame: x, y, frame, and flags
+// (priority in bits 0 and 1, horizontal flip in bit 2) per sprite.
 Module.setVirtualSprites = (entries) => {
   const memoryTransferBuffer = cwrap("memoryTransferBuffer", "number", ["number"]);
   const setVirtualSprites = cwrap("setVirtualSprites", "boolean", ["number"]);

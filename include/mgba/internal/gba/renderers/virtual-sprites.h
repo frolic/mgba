@@ -28,7 +28,8 @@ struct GBAVideoSoftwareRenderer;
 bool GBAVirtualSpritesSetFrames(const uint8_t* pixels, const uint16_t* palettes, size_t count);
 
 // `entries` holds four int16 values per sprite: screen x, screen y, frame,
-// and background priority (0 to 3). Later sprites are drawn behind earlier
+// and flags: background priority (0 to 3) in bits 0 and 1, and a horizontal
+// flip in bit 2. Later sprites are drawn behind earlier
 // ones on the same row, and sprites lower on screen in front of higher ones.
 bool GBAVirtualSpritesSet(const int16_t* entries, size_t count);
 

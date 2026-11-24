@@ -22,6 +22,7 @@ struct VirtualSprite {
 	int16_t y;
 	uint16_t frame;
 	uint8_t priority;
+	bool hFlip;
 };
 
 static struct {
@@ -107,7 +108,7 @@ bool GBAVirtualSpritesSet(const int16_t* entries, size_t count) {
 		    y <= -GBA_VIRTUAL_SPRITE_HEIGHT || y >= GBA_VIDEO_VERTICAL_PIXELS) {
 			continue;
 		}
-		state.sprites[kept] = (struct VirtualSprite) { x, y, frame, entry[3] & 3 };
+		state.sprites[kept] = (struct VirtualSprite) { x, y, frame, entry[3] & 3, (entry[3] & 4) != 0 };
 		++kept;
 	}
 	state.spriteCount = kept;
@@ -171,7 +172,8 @@ int GBAVirtualSpritesDrawScanline(struct GBAVideoSoftwareRenderer* renderer, int
 			uint32_t flags = (uint32_t) sprite->priority << OFFSET_PRIORITY;
 			int x;
 			for (x = 0; x < GBA_VIRTUAL_SPRITE_WIDTH; ++x) {
-				if (!(mask & (1 << x))) {
+				int sourceX = sprite->hFlip ? GBA_VIRTUAL_SPRITE_WIDTH - 1 - x : x;
+				if (!(mask & (1 << sourceX))) {
 					continue;
 				}
 				int outX = sprite->x + x;
@@ -180,7 +182,7 @@ int GBAVirtualSpritesDrawScanline(struct GBAVideoSoftwareRenderer* renderer, int
 				}
 				uint32_t current = renderer->spriteLayer[outX];
 				if ((current & FLAG_ORDER_MASK) > flags) {
-					renderer->spriteLayer[outX] = palette[pixels[x] & 0xF] | flags;
+					renderer->spriteLayer[outX] = palette[pixels[sourceX] & 0xF] | flags;
 				}
 			}
 			layers |= 1 << sprite->priority;
