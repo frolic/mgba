@@ -371,6 +371,27 @@ declare namespace mGBA {
     getSave(): Uint8Array | null;
 
     /**
+     * Reads bytes from the guest bus of the running game, without side
+     * effects on I/O registers. The core thread pauses for the read, so the
+     * bytes come from one frame.
+     *
+     * @param address - Guest address, ex. `0x02000000` for EWRAM.
+     * @param length - Number of bytes to read.
+     * @returns The bytes, or null if no game is loaded.
+     */
+    readMemory(address: number, length: number): Uint8Array | null;
+
+    /**
+     * Writes bytes to the guest bus of the running game. The core thread
+     * pauses for the write.
+     *
+     * @param address - Guest address, ex. `0x02000000` for EWRAM.
+     * @param bytes - Bytes to write, starting at `address`.
+     * @returns True if the bytes were written, false if no game is loaded.
+     */
+    writeMemory(address: number, bytes: Uint8Array): boolean;
+
+    /**
      * Gets the current audio volume multiplier.
      *
      * - `1.0` = 100%

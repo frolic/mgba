@@ -1322,6 +1322,55 @@ int excludeKeys(void* userdata, SDL_Event* event) {
 	};
 }
 
+// Memory access for embedders. JS gets a transfer buffer in the wasm heap,
+// then reads or writes the guest bus through it. The raw accessors have no
+// side effects on I/O registers, and the core thread is paused around each
+// call so a read sees one consistent frame.
+static uint8_t* memoryTransfer = NULL;
+static uint32_t memoryTransferSize = 0;
+
+EMSCRIPTEN_KEEPALIVE uint8_t* memoryTransferBuffer(uint32_t length) {
+	if (length > memoryTransferSize) {
+		uint8_t* grown = realloc(memoryTransfer, length);
+		if (!grown) {
+			return NULL;
+		}
+		memoryTransfer = grown;
+		memoryTransferSize = length;
+	}
+	return memoryTransfer;
+}
+
+static bool accessMemory(uint32_t address, uint32_t length, bool write) {
+	struct mCore* core = activeInputCore();
+	if (!core || length > memoryTransferSize) {
+		return false;
+	}
+	struct mCoreThread* thread = renderer->thread;
+	if (thread) {
+		mCoreThreadInterrupt(thread);
+	}
+	for (uint32_t i = 0; i < length; ++i) {
+		if (write) {
+			core->rawWrite8(core, address + i, -1, memoryTransfer[i]);
+		} else {
+			memoryTransfer[i] = core->rawRead8(core, address + i, -1);
+		}
+	}
+	if (thread) {
+		mCoreThreadContinue(thread);
+	}
+	return true;
+}
+
+EMSCRIPTEN_KEEPALIVE bool readMemory(uint32_t address, uint32_t length) {
+	return accessMemory(address, length, false);
+}
+
+EMSCRIPTEN_KEEPALIVE bool writeMemory(uint32_t address, uint32_t length) {
+	return accessMemory(address, length, true);
+}
+
 int main() {
 	renderer = malloc(sizeof(struct mEmscriptenRenderer));
 	memset(renderer, 0, sizeof(struct mEmscriptenRenderer));

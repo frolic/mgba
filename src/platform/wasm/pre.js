@@ -715,3 +715,28 @@ Module.unloadShader = () => {
   const unloadShader = cwrap("unloadShader", null, []);
   unloadShader();
 };
+
+// Reads `length` bytes of the guest bus starting at `address`, without side
+// effects on I/O registers. Returns null when no game is loaded.
+Module.readMemory = (address, length) => {
+  const memoryTransferBuffer = cwrap("memoryTransferBuffer", "number", ["number"]);
+  const readMemory = cwrap("readMemory", "boolean", ["number", "number"]);
+  const pointer = memoryTransferBuffer(length);
+  if (!pointer || !readMemory(address >>> 0, length)) {
+    return null;
+  }
+  return HEAPU8.slice(pointer, pointer + length);
+};
+
+// Writes `bytes` to the guest bus starting at `address`. Returns false when
+// no game is loaded.
+Module.writeMemory = (address, bytes) => {
+  const memoryTransferBuffer = cwrap("memoryTransferBuffer", "number", ["number"]);
+  const writeMemory = cwrap("writeMemory", "boolean", ["number", "number"]);
+  const pointer = memoryTransferBuffer(bytes.length);
+  if (!pointer) {
+    return false;
+  }
+  HEAPU8.set(bytes, pointer);
+  return Boolean(writeMemory(address >>> 0, bytes.length));
+};
