@@ -419,8 +419,11 @@ declare namespace mGBA {
      * `videoFrameEndedCallback`, while the core thread waits.
      *
      * @param entries - Screen x, screen y, frame, and flags per sprite. The
-     *   flags are the background priority (0 to 3) in bits 0 and 1, and a
-     *   horizontal flip in bit 2.
+     *   flags are the background priority (0 to 3) in bits 0 and 1, a
+     *   horizontal flip in bit 2, and a fade (0 to 15) in bits 8 to 11,
+     *   which draws the sprite at an opacity of (16 - fade) / 16. A sprite
+     *   identical to an earlier one is skipped. Sprites take the game's
+     *   blending and brightness effects in each window, as its own do.
      * @returns True if the sprites were set.
      */
     setVirtualSprites(entries: Int16Array): boolean;

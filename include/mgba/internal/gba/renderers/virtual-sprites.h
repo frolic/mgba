@@ -28,9 +28,13 @@ struct GBAVideoSoftwareRenderer;
 bool GBAVirtualSpritesSetFrames(const uint8_t* pixels, const uint16_t* palettes, size_t count);
 
 // `entries` holds four int16 values per sprite: screen x, screen y, frame,
-// and flags: background priority (0 to 3) in bits 0 and 1, and a horizontal
-// flip in bit 2. Later sprites are drawn behind earlier
-// ones on the same row, and sprites lower on screen in front of higher ones.
+// and flags: background priority (0 to 3) in bits 0 and 1, a horizontal flip
+// in bit 2, and a fade (0 to 15) in bits 8 to 11, which draws the sprite at
+// an opacity of (16 - fade) / 16 over what is behind it. Later sprites are
+// drawn behind earlier ones on the same row, and sprites lower on screen in
+// front of higher ones. A sprite identical to an earlier one, flags
+// included, is skipped. Virtual sprites take the game's blending and
+// brightness effects in each window, as real sprites do.
 bool GBAVirtualSpritesSet(const int16_t* entries, size_t count);
 
 // Drawing one scanline: begin it, then before each real sprite that
@@ -44,6 +48,11 @@ bool GBAVirtualSpritesSet(const int16_t* entries, size_t count);
 void GBAVirtualSpritesBeginScanline(int y);
 int GBAVirtualSpritesDrawUntil(struct GBAVideoSoftwareRenderer* renderer, int bottom);
 void GBAVirtualSpritesEndScanline(void);
+
+// Blends the translucent virtual pixels of `priority` in the current window
+// over what is already drawn behind them. Call it at the start of
+// GBAVideoSoftwareRendererPostprocessSprite.
+void GBAVirtualSpritesBlend(struct GBAVideoSoftwareRenderer* renderer, unsigned priority);
 
 // Whether the sprites changed since the last call, so every scanline has to
 // be drawn again.
