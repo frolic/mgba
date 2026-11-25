@@ -5,6 +5,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include "gba/renderers/software-private.h"
 
+#include <mgba/internal/gba/renderers/virtual-sprites.h>
+
 #define SPRITE_NORMAL_LOOP(DEPTH, TYPE) \
 	SPRITE_YBASE_ ## DEPTH(inY); \
 	unsigned tileData; \
@@ -376,6 +378,7 @@ int GBAVideoSoftwareRendererPreprocessSprite(struct GBAVideoSoftwareRenderer* re
 }
 
 void GBAVideoSoftwareRendererPostprocessSprite(struct GBAVideoSoftwareRenderer* renderer, unsigned priority) {
+	GBAVirtualSpritesBlend(renderer, priority);
 	int x;
 	uint32_t* pixel = &renderer->row[renderer->start];
 	uint32_t flags = FLAG_TARGET_2 * renderer->target2Obj;
